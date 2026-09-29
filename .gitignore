@@ -1,0 +1,9 @@
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Noctalia runtime state (never commit)
+*/data/
+*/.noctalia/

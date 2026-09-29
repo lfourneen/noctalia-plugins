@@ -1,0 +1,13 @@
+{
+  "settings.yield_wallpaper.label": "waywallen 运行时隐藏 Noctalia 壁纸",
+  "settings.yield_wallpaper.description": "让 Noctalia 停止在每个输出上绘制自己的壁纸层，这样壁纸开关就不会盖住 waywallen 的动态壁纸。可用状态栏挂件临时暂停。",
+  "settings.require_running.label": "仅在 waywallen 运行时",
+  "settings.require_running.description": "只有检测到 waywallen 进程时才让位；未运行时恢复 Noctalia 壁纸。关闭后无条件让位（waywallen 未运行时会显示黑屏）。",
+  "settings.manage_daemon.label": "接管 waywallen 服务",
+  "settings.manage_daemon.description": "插件启用时启动该 systemd 用户单元，插件禁用或卸载时停止它。若 waywallen 由 NixOS / home-manager 配置启动，请保持关闭。",
+  "settings.unit.label": "服务单元",
+  "settings.unit.description": "运行 waywallen 的 systemd 用户单元，仅在『接管 waywallen 服务』开启时使用。",
+  "settings.poll_seconds.label": "轮询间隔（秒）",
+  "settings.poll_seconds.description": "多久重新检测一次 waywallen 是否在运行并重新断言让位。",
+  "settings.glyph.label": "图标"
+}

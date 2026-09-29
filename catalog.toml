@@ -1,0 +1,22 @@
+# Noctalia plugin source catalog.
+#
+# One [[plugin]] row per plugin, mirroring that plugin's own plugin.toml.
+# Noctalia reads this file from the git source without a full checkout, then
+# exports the matching subdirectory - the part of the id after "/" - when the
+# plugin is enabled. Keep it in sync with `waywallen-bridge/plugin.toml`.
+#
+# Add this repo to Noctalia with:
+#   noctalia msg plugins source add lfourneen git https://github.com/lfourneen/noctalia-plugins
+
+[[plugin]]
+id           = "lfourneen/waywallen-bridge"
+name         = "Waywallen Bridge"
+version      = "1.0.0"
+author       = "lfourneen"
+license      = "MIT"
+icon         = "wallpaper"
+description  = "Keeps Noctalia's own wallpaper surface off the outputs waywallen draws on, so the wallpaper switch and the live wallpaper stop fighting."
+plugin_api   = 17
+tags         = ["wallpaper", "desktop"]
+dependencies = ["waywallen"]
+deprecated   = false

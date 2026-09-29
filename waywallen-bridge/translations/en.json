@@ -1,0 +1,13 @@
+{
+  "settings.yield_wallpaper.label": "Hide Noctalia's wallpaper while waywallen runs",
+  "settings.yield_wallpaper.description": "Asks Noctalia to stop drawing its own wallpaper surface on every output, so the wallpaper switch cannot cover waywallen's live wallpaper. The bar widget can suspend this temporarily.",
+  "settings.require_running.label": "Only while waywallen is running",
+  "settings.require_running.description": "Yield only when a waywallen process is detected, restoring Noctalia's wallpaper when it is not. Turn off to yield unconditionally (a black background shows if waywallen is not running).",
+  "settings.manage_daemon.label": "Manage the waywallen service",
+  "settings.manage_daemon.description": "Start the systemd user unit when the plugin is enabled and stop it when the plugin is disabled or removed. Leave off when waywallen is started by your NixOS / home-manager configuration.",
+  "settings.unit.label": "Service unit",
+  "settings.unit.description": "systemd user unit that runs waywallen. Used only when 'Manage the waywallen service' is on.",
+  "settings.poll_seconds.label": "Poll interval (seconds)",
+  "settings.poll_seconds.description": "How often to re-check whether waywallen is running and re-assert the yield.",
+  "settings.glyph.label": "Icon"
+}
