@@ -25,6 +25,11 @@
 --    palette generator, templates and lock screen against the live wallpaper -
 --    what the W Engine plugin calls "sync colors" - while waywallen still draws
 --    the background.
+--
+-- Performance: one `ps` scan per poll feeds both the running probe and color
+-- sync (no second /proc walk). A video is decoded once: the frame is cached as
+-- frame-<hash>-<mtime>.jpg and reused until the wallpaper path or its mtime
+-- changes, so ffmpeg never runs on the steady state.
 
 local STATUS_KEY = "waywallen-bridge.status"
 local SUSPEND_KEY = "waywallen-bridge.suspend"
@@ -57,7 +62,7 @@ local IMAGE_EXTENSIONS = {
 }
 
 local yielded = {} -- connector -> true, outputs we asked Noctalia to drop
-local running = false -- result of the last waywallen process probe
+local running = false -- result of the last waywallen process scan
 local note = "" -- short human-readable reason for the last action
 local savedWallpaper = {} -- connector -> Noctalia wallpaper before we overrode it
 local pendingCaptures = 0
@@ -227,16 +232,18 @@ local function restoreWallpaper()
 	end
 end
 
--- The current wallpaper file(s) waywallen renders, read from the renderer
--- processes it spawns (one per display). `ps` output is space-joined, so paths
--- with spaces are a known limitation.
-local function detectWaywallenWallpapers(callback)
+-- One process scan per poll: reports whether waywallen is running and the
+-- wallpaper file(s) its renderers are using. `ps -eo args` joins argv with
+-- spaces, so paths containing spaces are a known limitation.
+local function scanWaywallen(callback)
 	noctalia.runAsync("ps -eo args 2>/dev/null || true", function(result)
+		local found = false
 		local paths = {}
 		local seen = {}
 		if result and result.stdout then
 			for line in result.stdout:gmatch("[^\n]+") do
-				if line:find("waywallen", 1, true) and line:find("renderer", 1, true) then
+				if line:find("waywallen", 1, true) and not line:find("waywallen-bridge", 1, true) then
+					found = true
 					local path = line:match("%-%-path[= ]([^%s]+)")
 					if path and path ~= "" and not seen[path] then
 						seen[path] = true
@@ -245,12 +252,33 @@ local function detectWaywallenWallpapers(callback)
 				end
 			end
 		end
-		callback(paths)
+		callback(found, paths)
 	end, 5000)
 end
 
+-- Delete frames from previous wallpapers, keeping the one in use.
+local function cleanupFrames(keep)
+	local directory = noctalia.pluginDataDir()
+	if not directory then
+		return
+	end
+	local entries = noctalia.listDir(directory)
+	if type(entries) ~= "table" then
+		return
+	end
+	for _, name in ipairs(entries) do
+		if name:sub(1, 6) == "frame-" and name:sub(-4) == ".jpg" then
+			local full = directory .. "/" .. name
+			if full ~= keep then
+				noctalia.removeFile(full)
+			end
+		end
+	end
+end
+
 -- Turn a wallpaper file into an image Noctalia can derive a palette from:
--- images are used as-is, videos are decoded to a single frame with ffmpeg.
+-- images are used as-is, videos are decoded to a single frame with ffmpeg and
+-- cached, so the decode happens once per source path + mtime.
 local function resolveStill(source, callback)
 	local extension = extensionOf(source)
 	if IMAGE_EXTENSIONS[extension] then
@@ -273,7 +301,8 @@ local function resolveStill(source, callback)
 	local info = noctalia.fileInfo(source)
 	local mtime = (type(info) == "table" and info.mtime) or 0
 	local still = directory .. "/frame-" .. hashString(source) .. "-" .. tostring(mtime) .. ".jpg"
-	if noctalia.fileExists(still) then
+	local cached = noctalia.fileInfo(still)
+	if type(cached) == "table" and (cached.size or 0) > 0 then
 		callback(still)
 		return
 	end
@@ -285,31 +314,31 @@ local function resolveStill(source, callback)
 		.. " -i " .. shellQuote(source)
 		.. " -frames:v 1 -vf scale=960:-2 " .. shellQuote(still)
 	noctalia.runAsync(command, function()
-		callback(noctalia.fileExists(still) and still or nil)
+		local produced = noctalia.fileInfo(still)
+		callback((type(produced) == "table" and (produced.size or 0) > 0) and still or nil)
 	end, 20000)
 end
 
-local function syncColors()
+local function syncColors(paths)
 	if not syncEnabled() or not captureDone then
 		return
 	end
-	detectWaywallenWallpapers(function(paths)
-		if #paths == 0 then
+	if #paths == 0 then
+		return
+	end
+	resolveStill(paths[1], function(still)
+		if not still or still == "" or still == lastStill then
 			return
 		end
-		resolveStill(paths[1], function(still)
-			if not still or still == "" or still == lastStill then
-				return
-			end
-			lastStill = still
-			noctalia.setWallpaper(still)
-			note = "colors synced"
-			publish()
-		end)
+		lastStill = still
+		noctalia.setWallpaper(still)
+		cleanupFrames(still)
+		note = "colors synced"
+		publish()
 	end)
 end
 
--- Probe for a running waywallen process and reconcile Noctalia's surfaces.
+-- Probe for waywallen and reconcile Noctalia's surfaces and colors.
 local function reconcile()
 	if not yieldEnabled() or suspended() then
 		restoreAll()
@@ -320,28 +349,29 @@ local function reconcile()
 		return
 	end
 
-	if not requireRunning() then
+	-- Nothing to probe for: just yield unconditionally.
+	if not requireRunning() and not syncEnabled() then
 		running = true
 		yieldAll()
-		syncColors()
 		note = "yielded"
 		publish()
 		return
 	end
 
-	noctalia.processMatches(function(matched)
-		running = matched
-		if matched then
-			yieldAll()
-			syncColors()
-			note = "yielded"
-		else
+	scanWaywallen(function(found, paths)
+		running = found
+		if requireRunning() and not found then
 			restoreAll()
 			restoreWallpaper()
 			note = "waywallen not running"
+			publish()
+			return
 		end
+		yieldAll()
+		syncColors(paths)
+		note = "yielded"
 		publish()
-	end, "waywallen")
+	end)
 end
 
 -- Defensive: on a Noctalia without the wallpaper hook the plugin is a no-op
@@ -398,7 +428,7 @@ function onIpc(event, _payload)
 	if event == "refresh" then
 		reconcile()
 	elseif event == "sync" then
-		syncColors()
+		scanWaywallen(function(_, paths) syncColors(paths) end)
 	elseif event == "suspend" then
 		noctalia.state.set(SUSPEND_KEY, true)
 		reconcile()

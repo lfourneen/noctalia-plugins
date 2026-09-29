@@ -121,10 +121,11 @@ noctalia msg plugin lfourneen/waywallen-bridge:service all status
 - `setWallpaperEnabled` is runtime-only and clears when Noctalia restarts, so
   the service re-asserts it on every poll, on `onOutputsChanged` (hotplug), and
   on `onEnable`.
-- For color sync it scans `ps` for `waywallen-*-renderer ... --path <file>`,
-  extracts a frame from videos with `ffmpeg`, and calls `noctalia.setWallpaper()`
-  when the still changes. The previous wallpaper is saved per output and put
-  back on suspend or exit.
+- For color sync it runs one `ps` scan per poll (shared with the running
+  probe), pulls `--path` from `waywallen-*-renderer`, decodes a video frame with
+  `ffmpeg` **once** and caches it as `frame-<hash>-<mtime>.jpg`, then calls
+  `noctalia.setWallpaper()` only when the still changes. Old frames are cleaned
+  up. The previous wallpaper is saved per output and put back on suspend or exit.
 - `onExit` restores Noctalia's surface and wallpaper (and stops the unit, if
   managed) when the plugin is disabled or removed; a plain reload is skipped to
   avoid a flash.
