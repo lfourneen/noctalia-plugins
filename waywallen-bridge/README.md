@@ -37,6 +37,12 @@ then follow the live wallpaper, while waywallen still draws the background. The
 wallpaper Noctalia had before is saved and restored when you disable or suspend
 the plugin.
 
+Sync runs whether or not Noctalia's surface is hidden, so the palette and
+previews keep following waywallen in both modes. Note that Noctalia's
+control-center **Home tab preview** is drawn from its live wallpaper
+*instance*: hiding the surface (yield on) removes that instance, so the preview
+only appears with yield off.
+
 Set `[theme] source = "wallpaper"` in Noctalia for the palette to follow it.
 
 ## Requirements
@@ -105,7 +111,7 @@ noctalia msg plugin lfourneen/waywallen-bridge:service all status
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| Hide Noctalia's wallpaper while waywallen runs | on | Master switch (`yield_wallpaper`). |
+| Hide Noctalia's wallpaper while waywallen runs | on | Hide Noctalia's layer so waywallen is always visible; turn off to keep Noctalia's instance (Home-tab preview) and rely on layer order (`yield_wallpaper`). |
 | Only while waywallen is running | on | Probe for a waywallen process; restore Noctalia's wallpaper otherwise. |
 | Manage the waywallen service | off | Start/stop the systemd user unit with the plugin. Leave off when your init system starts it. |
 | Service unit | `waywallen.service` | Unit used only by the option above. |

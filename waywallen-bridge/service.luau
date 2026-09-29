@@ -320,7 +320,7 @@ local function resolveStill(source, callback)
 end
 
 local function syncColors(paths)
-	if not syncEnabled() or not captureDone then
+	if not syncEnabled() then
 		return
 	end
 	if #paths == 0 then
@@ -340,20 +340,24 @@ end
 
 -- Probe for waywallen and reconcile Noctalia's surfaces and colors.
 local function reconcile()
-	if not yieldEnabled() or suspended() then
+	if suspended() then
 		restoreAll()
 		restoreWallpaper()
 		running = false
-		note = suspended() and "suspended" or "yield disabled"
+		note = "suspended"
 		publish()
 		return
 	end
 
-	-- Nothing to probe for: just yield unconditionally.
 	if not requireRunning() and not syncEnabled() then
 		running = true
-		yieldAll()
-		note = "yielded"
+		if yieldEnabled() then
+			yieldAll()
+			note = "yielded"
+		else
+			restoreAll()
+			note = "yield disabled"
+		end
 		publish()
 		return
 	end
@@ -367,9 +371,16 @@ local function reconcile()
 			publish()
 			return
 		end
-		yieldAll()
-		syncColors(paths)
-		note = "yielded"
+		if yieldEnabled() then
+			yieldAll()
+			note = "yielded"
+		else
+			restoreAll()
+			note = "yield disabled"
+		end
+		if syncEnabled() then
+			syncColors(paths)
+		end
 		publish()
 	end)
 end
@@ -384,12 +395,13 @@ if enabled then
 end
 
 -- Service tick: re-check and re-assert (the yield flag is runtime-only, so this
--- also recovers it after a Noctalia restart).
+-- also recovers it after a Noctalia restart). The update interval is set once at
+-- load and on a settings change, never here: re-arming the timer from inside the
+-- callback can spin it.
 function update()
 	if not enabled then
 		return
 	end
-	noctalia.setUpdateInterval(pollMilliseconds())
 	reconcile()
 end
 
