@@ -9,5 +9,9 @@
   "settings.unit.description": "systemd user unit that runs waywallen. Used only when 'Manage the waywallen service' is on.",
   "settings.poll_seconds.label": "Poll interval (seconds)",
   "settings.poll_seconds.description": "How often to re-check whether waywallen is running and re-assert the yield.",
+  "settings.sync_colors.label": "Sync Noctalia's colors from the wallpaper",
+  "settings.sync_colors.description": "Hand Noctalia a still of waywallen's current wallpaper so its palette generator, templates and lock screen follow the live wallpaper. Videos are decoded to a frame with ffmpeg.",
+  "settings.video_seek_seconds.label": "Video frame at (seconds)",
+  "settings.video_seek_seconds.description": "Timestamp of the frame captured from a video wallpaper for color sync.",
   "settings.glyph.label": "Icon"
 }

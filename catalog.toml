@@ -11,12 +11,12 @@
 [[plugin]]
 id           = "lfourneen/waywallen-bridge"
 name         = "Waywallen Bridge"
-version      = "1.0.0"
+version      = "1.1.0"
 author       = "lfourneen"
 license      = "MIT"
 icon         = "wallpaper"
-description  = "Keeps Noctalia's own wallpaper surface off the outputs waywallen draws on, so the wallpaper switch and the live wallpaper stop fighting."
+description  = "Keeps Noctalia's own wallpaper surface out of the way while waywallen draws the background, and syncs Noctalia's colorscheme and previews to waywallen's current wallpaper."
 plugin_api   = 17
-tags         = ["wallpaper", "desktop"]
-dependencies = ["waywallen"]
+tags         = ["wallpaper", "desktop", "theming"]
+dependencies = ["waywallen", "ffmpeg"]
 deprecated   = false

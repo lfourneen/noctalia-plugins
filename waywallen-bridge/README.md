@@ -1,8 +1,10 @@
 # Waywallen Bridge
 
 A [Noctalia](https://github.com/noctalia-dev/noctalia) plugin that lets
-[waywallen](https://github.com/waywallen/waywallen) and Noctalia's built-in
-wallpaper coexist instead of fighting over the background.
+[waywallen](https://github.com/waywallen/waywallen) draw the background while
+Noctalia's own wallpaper keeps working in the background: its palette generator,
+templates and lock screen follow waywallen's current wallpaper, instead of the
+two fighting over the background layer.
 
 ## The problem
 
@@ -22,11 +24,27 @@ down - the same hook the official `mpvpaper` plugin uses. This plugin's
 Noctalia's surface when waywallen stops, the plugin is disabled, or you suspend
 the arbitration from the bar widget.
 
+## Colors and previews
+
+Tearing the surface down would also cost Noctalia its palette generator and
+wallpaper previews. So the service runs the W Engine plugin's "sync colors"
+trick: it reads waywallen's current wallpaper from the renderer processes it
+spawns (`waywallen-video-renderer` / `waywallen-image-renderer ... --path
+<file>`), turns it into a still - the image itself, or a video frame decoded
+with `ffmpeg` - and hands it to Noctalia with `noctalia.setWallpaper()`. The
+palette generator (`[theme] source = "wallpaper"`), templates and lock screen
+then follow the live wallpaper, while waywallen still draws the background. The
+wallpaper Noctalia had before is saved and restored when you disable or suspend
+the plugin.
+
+Set `[theme] source = "wallpaper"` in Noctalia for the palette to follow it.
+
 ## Requirements
 
 - Noctalia v5 (plugin API 17+, i.e. `v5.0.0-beta.7` or newer).
 - [waywallen](https://github.com/waywallen/waywallen) installed and running (a
   `waywallen.service` systemd user unit, its tray, or however you launch it).
+- `ffmpeg` for color sync when the wallpaper is a video (images need nothing).
 - A `wlr-layer-shell` compositor (niri, Hyprland, Sway, ...).
 
 ## Install
@@ -76,6 +94,7 @@ Noctalia's own wallpaper switch work again. IPC is also available:
 
 ```sh
 noctalia msg plugin lfourneen/waywallen-bridge:service all refresh
+noctalia msg plugin lfourneen/waywallen-bridge:service all sync
 noctalia msg plugin lfourneen/waywallen-bridge:service all suspend
 noctalia msg plugin lfourneen/waywallen-bridge:service all resume
 noctalia msg plugin lfourneen/waywallen-bridge:service all toggle
@@ -91,6 +110,8 @@ noctalia msg plugin lfourneen/waywallen-bridge:service all status
 | Manage the waywallen service | off | Start/stop the systemd user unit with the plugin. Leave off when your init system starts it. |
 | Service unit | `waywallen.service` | Unit used only by the option above. |
 | Poll interval (seconds) | `3` | How often to re-check and re-assert. |
+| Sync Noctalia's colors from the wallpaper | on | Feed Noctalia a still of waywallen's wallpaper (`sync_colors`). |
+| Video frame at (seconds) | `1` | Timestamp of the frame captured from a video wallpaper. |
 
 ## How it works
 
@@ -100,8 +121,13 @@ noctalia msg plugin lfourneen/waywallen-bridge:service all status
 - `setWallpaperEnabled` is runtime-only and clears when Noctalia restarts, so
   the service re-asserts it on every poll, on `onOutputsChanged` (hotplug), and
   on `onEnable`.
-- `onExit` restores Noctalia's wallpaper (and stops the unit, if managed) when
-  the plugin is disabled or removed; a plain reload is skipped to avoid a flash.
+- For color sync it scans `ps` for `waywallen-*-renderer ... --path <file>`,
+  extracts a frame from videos with `ffmpeg`, and calls `noctalia.setWallpaper()`
+  when the still changes. The previous wallpaper is saved per output and put
+  back on suspend or exit.
+- `onExit` restores Noctalia's surface and wallpaper (and stops the unit, if
+  managed) when the plugin is disabled or removed; a plain reload is skipped to
+  avoid a flash.
 
 ## Layout
 
@@ -120,7 +146,10 @@ Noctalia 的壁纸开关只控制它自己绘制的 `noctalia-wallpaper` 背景�
 绘制独立的 `waywallen-wallpaper` 背景层，两者互不知情会互相覆盖。本插件在检测到
 waywallen 进程运行时，对每个输出调用 `noctalia.setWallpaperEnabled(conn, false)`，
 让 Noctalia 主动让出背景层；waywallen 停止、插件被禁用、或在状态栏挂件里暂停时再
-恢复。安装：**设置 → 插件 → 添加源 → Git** 填入本仓库链接，然后启用 **Waywallen Bridge**。
+恢复。配色同步：从 waywallen 的渲染进程读取当前壁纸文件，图片直接用、视频用 ffmpeg
+抽一帧，再 `noctalia.setWallpaper()` 交给 Noctalia，于是调色板、模板和锁屏跟随动态
+壁纸（把 `[theme] source` 设为 `"wallpaper"`）。安装：**设置 → 插件 → 添加源 → Git**
+填入本仓库链接，然后启用 **Waywallen Bridge**。
 
 ## License
 

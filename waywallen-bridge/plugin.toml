@@ -1,19 +1,22 @@
 id = "lfourneen/waywallen-bridge"
 name = "Waywallen Bridge"
-version = "1.0.0"
+version = "1.1.0"
 plugin_api = 17
 author = "lfourneen"
 license = "MIT"
 icon = "wallpaper"
-description = "Keeps Noctalia's own wallpaper surface off the outputs waywallen draws on, so the wallpaper switch and the live wallpaper stop fighting."
-tags = ["wallpaper", "desktop"]
-dependencies = ["waywallen"]
+description = "Keeps Noctalia's own wallpaper surface out of the way while waywallen draws the background, and syncs Noctalia's colorscheme and previews to waywallen's current wallpaper."
+tags = ["wallpaper", "desktop", "theming"]
+dependencies = ["waywallen", "ffmpeg"]
 
 # Noctalia's wallpaper switch only creates/destroys Noctalia's own
 # "noctalia-wallpaper" layer-shell surface. waywallen draws its own
 # "waywallen-wallpaper" surface, so the two stack. This plugin uses
 # noctalia.setWallpaperEnabled() - the same hook the official mpvpaper plugin
-# uses - to make Noctalia yield those outputs while waywallen is running.
+# uses - to make Noctalia yield those outputs while waywallen is running, and
+# noctalia.setWallpaper() to feed Noctalia a still of the live wallpaper so its
+# palette generator, templates and lock screen follow it (the W Engine plugin's
+# "sync colors" behavior).
 
 [[setting]]
 key = "yield_wallpaper"
@@ -51,6 +54,22 @@ description_key = "settings.poll_seconds.description"
 default = 3
 min = 1
 max = 60
+
+[[setting]]
+key = "sync_colors"
+type = "bool"
+label_key = "settings.sync_colors.label"
+description_key = "settings.sync_colors.description"
+default = true
+
+[[setting]]
+key = "video_seek_seconds"
+type = "double"
+label_key = "settings.video_seek_seconds.label"
+description_key = "settings.video_seek_seconds.description"
+default = 1.0
+min = 0.0
+max = 60.0
 
 # Headless service: the actual arbitration, runs with or without a bar widget.
 [[service]]

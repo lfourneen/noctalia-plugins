@@ -9,5 +9,9 @@
   "settings.unit.description": "运行 waywallen 的 systemd 用户单元，仅在『接管 waywallen 服务』开启时使用。",
   "settings.poll_seconds.label": "轮询间隔（秒）",
   "settings.poll_seconds.description": "多久重新检测一次 waywallen 是否在运行并重新断言让位。",
+  "settings.sync_colors.label": "根据壁纸同步 Noctalia 配色",
+  "settings.sync_colors.description": "把 waywallen 当前壁纸的静帧交给 Noctalia，让调色板、模板和锁屏跟随动态壁纸。视频会用 ffmpeg 抽取一帧。",
+  "settings.video_seek_seconds.label": "视频取帧时间点（秒）",
+  "settings.video_seek_seconds.description": "视频壁纸用于配色同步时截取画面的时间点。",
   "settings.glyph.label": "图标"
 }

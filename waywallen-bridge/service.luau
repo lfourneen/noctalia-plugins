@@ -1,5 +1,5 @@
 --!nonstrict
--- Waywallen Bridge <-> Noctalia wallpaper arbitration.
+-- Waywallen Bridge <-> Noctalia wallpaper arbitration and color sync.
 --
 -- Noctalia draws its own wallpaper as a wlr-layer-shell Background surface
 -- (namespace "noctalia-wallpaper"); the switch under Settings -> Wallpaper only
@@ -7,27 +7,74 @@
 -- ("waywallen-wallpaper") and knows nothing about Noctalia, so when both are up
 -- the two surfaces stack and the switch cannot turn waywallen off.
 --
--- Noctalia exposes `noctalia.setWallpaperEnabled(connector, false)` to plugins,
--- which marks the output as externally managed and tears Noctalia's surface
--- down (the same thing the official mpvpaper plugin does). This service calls
--- it for every output while waywallen is running, and restores Noctalia's
--- surface when waywallen stops, the plugin is disabled, or the user suspends
--- the arbitration from the bar widget.
+-- Two things happen here:
 --
--- The flag is runtime-only and clears when Noctalia restarts, so the service
--- re-asserts it on every poll, on hotplug, and on enable.
+-- 1. Yield. Noctalia exposes `noctalia.setWallpaperEnabled(connector, false)`
+--    to plugins, which marks an output as externally managed and tears
+--    Noctalia's surface down (the same hook the official mpvpaper plugin uses).
+--    The service calls it for every output while waywallen is running, and
+--    restores Noctalia's surface when waywallen stops, the plugin is disabled,
+--    or the user suspends it from the bar widget. The flag is runtime-only and
+--    clears when Noctalia restarts, so it is re-asserted on every poll, on
+--    hotplug, and on enable.
+--
+-- 2. Color sync. waywallen's current wallpaper is read from its renderer
+--    processes (`waywallen-video-renderer` / `waywallen-image-renderer ...
+--    --path <file>`), turned into a still (a frame via ffmpeg for videos) and
+--    handed to Noctalia with `noctalia.setWallpaper()`. Noctalia then runs its
+--    palette generator, templates and lock screen against the live wallpaper -
+--    what the W Engine plugin calls "sync colors" - while waywallen still draws
+--    the background.
 
 local STATUS_KEY = "waywallen-bridge.status"
 local SUSPEND_KEY = "waywallen-bridge.suspend"
 local DEFAULT_UNIT = "waywallen.service"
 
+local VIDEO_EXTENSIONS = {
+	mp4 = true,
+	webm = true,
+	mkv = true,
+	mov = true,
+	avi = true,
+	m4v = true,
+	wmv = true,
+	flv = true,
+	ts = true,
+	m2ts = true,
+}
+
+local IMAGE_EXTENSIONS = {
+	png = true,
+	jpg = true,
+	jpeg = true,
+	webp = true,
+	bmp = true,
+	gif = true,
+	avif = true,
+	jxl = true,
+	tiff = true,
+	tif = true,
+}
+
 local yielded = {} -- connector -> true, outputs we asked Noctalia to drop
 local running = false -- result of the last waywallen process probe
 local note = "" -- short human-readable reason for the last action
+local savedWallpaper = {} -- connector -> Noctalia wallpaper before we overrode it
+local pendingCaptures = 0
+local captureDone = false
+local lastStill = nil -- last still path we handed to Noctalia
 
 local function cfgBool(key, fallback)
 	local value = noctalia.getConfig(key)
 	if type(value) == "boolean" then
+		return value
+	end
+	return fallback
+end
+
+local function cfgNumber(key, fallback)
+	local value = noctalia.getConfig(key)
+	if type(value) == "number" then
 		return value
 	end
 	return fallback
@@ -57,6 +104,10 @@ local function requireRunning()
 	return cfgBool("require_running", true)
 end
 
+local function syncEnabled()
+	return cfgBool("sync_colors", true)
+end
+
 local function manageDaemon()
 	return cfgBool("manage_daemon", false)
 end
@@ -77,10 +128,27 @@ local function count(t)
 	return n
 end
 
--- Single-quote a value for /bin/sh so the user-set unit name cannot be read as
--- shell syntax.
+local function trim(value)
+	local text = tostring(value or "")
+	text = text:gsub("^%s+", "")
+	text = text:gsub("%s+$", "")
+	return text
+end
+
 local function shellQuote(value)
 	return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function extensionOf(path)
+	return (tostring(path):match("%.([%w]+)$") or ""):lower()
+end
+
+local function hashString(value)
+	local hash = 5381
+	for i = 1, #value do
+		hash = (hash * 33 + value:byte(i)) % 4294967296
+	end
+	return string.format("%08x", hash)
 end
 
 local function publish()
@@ -94,7 +162,9 @@ local function publish()
 		running = running,
 		suspended = suspended(),
 		yield_enabled = yieldEnabled(),
+		sync_colors = syncEnabled(),
 		require_running = requireRunning(),
+		still = lastStill,
 		note = note,
 	})
 end
@@ -119,10 +189,131 @@ local function restoreAll()
 	end
 end
 
+-- Remember the wallpaper Noctalia had before we started overriding it, per
+-- output, so disabling or suspending the plugin can put it back.
+local function captureSavedWallpaper()
+	if captureDone then
+		return
+	end
+	local outputs = noctalia.outputs()
+	pendingCaptures = #outputs
+	if pendingCaptures == 0 then
+		captureDone = true
+		return
+	end
+	for _, output in ipairs(outputs) do
+		local connector = output.name
+		noctalia.runAsync("noctalia msg wallpaper-get " .. shellQuote(connector), function(result)
+			if result and result.exitCode == 0 and result.stdout then
+				local previous = trim(result.stdout)
+				if previous ~= "" then
+					savedWallpaper[connector] = previous
+				end
+			end
+			pendingCaptures = pendingCaptures - 1
+			if pendingCaptures <= 0 then
+				captureDone = true
+			end
+		end, 3000)
+	end
+end
+
+local function restoreWallpaper()
+	lastStill = nil
+	for connector, path in pairs(savedWallpaper) do
+		if type(path) == "string" and path ~= "" then
+			noctalia.setWallpaper(connector, path)
+		end
+	end
+end
+
+-- The current wallpaper file(s) waywallen renders, read from the renderer
+-- processes it spawns (one per display). `ps` output is space-joined, so paths
+-- with spaces are a known limitation.
+local function detectWaywallenWallpapers(callback)
+	noctalia.runAsync("ps -eo args 2>/dev/null || true", function(result)
+		local paths = {}
+		local seen = {}
+		if result and result.stdout then
+			for line in result.stdout:gmatch("[^\n]+") do
+				if line:find("waywallen", 1, true) and line:find("renderer", 1, true) then
+					local path = line:match("%-%-path[= ]([^%s]+)")
+					if path and path ~= "" and not seen[path] then
+						seen[path] = true
+						table.insert(paths, path)
+					end
+				end
+			end
+		end
+		callback(paths)
+	end, 5000)
+end
+
+-- Turn a wallpaper file into an image Noctalia can derive a palette from:
+-- images are used as-is, videos are decoded to a single frame with ffmpeg.
+local function resolveStill(source, callback)
+	local extension = extensionOf(source)
+	if IMAGE_EXTENSIONS[extension] then
+		callback(noctalia.fileExists(source) and source or nil)
+		return
+	end
+	if not VIDEO_EXTENSIONS[extension] then
+		callback(nil)
+		return
+	end
+	if not noctalia.commandExists("ffmpeg") then
+		callback(nil)
+		return
+	end
+	local directory = noctalia.pluginDataDir()
+	if not directory then
+		callback(nil)
+		return
+	end
+	local info = noctalia.fileInfo(source)
+	local mtime = (type(info) == "table" and info.mtime) or 0
+	local still = directory .. "/frame-" .. hashString(source) .. "-" .. tostring(mtime) .. ".jpg"
+	if noctalia.fileExists(still) then
+		callback(still)
+		return
+	end
+	local seek = cfgNumber("video_seek_seconds", 1.0)
+	if seek < 0 then
+		seek = 0
+	end
+	local command = "ffmpeg -y -loglevel error -ss " .. tostring(seek)
+		.. " -i " .. shellQuote(source)
+		.. " -frames:v 1 -vf scale=960:-2 " .. shellQuote(still)
+	noctalia.runAsync(command, function()
+		callback(noctalia.fileExists(still) and still or nil)
+	end, 20000)
+end
+
+local function syncColors()
+	if not syncEnabled() or not captureDone then
+		return
+	end
+	detectWaywallenWallpapers(function(paths)
+		if #paths == 0 then
+			return
+		end
+		resolveStill(paths[1], function(still)
+			if not still or still == "" or still == lastStill then
+				return
+			end
+			lastStill = still
+			noctalia.setWallpaper(still)
+			note = "colors synced"
+			publish()
+		end)
+	end)
+end
+
 -- Probe for a running waywallen process and reconcile Noctalia's surfaces.
 local function reconcile()
 	if not yieldEnabled() or suspended() then
 		restoreAll()
+		restoreWallpaper()
 		running = false
 		note = suspended() and "suspended" or "yield disabled"
 		publish()
@@ -130,8 +321,9 @@ local function reconcile()
 	end
 
 	if not requireRunning() then
-		yieldAll()
 		running = true
+		yieldAll()
+		syncColors()
 		note = "yielded"
 		publish()
 		return
@@ -141,9 +333,11 @@ local function reconcile()
 		running = matched
 		if matched then
 			yieldAll()
+			syncColors()
 			note = "yielded"
 		else
 			restoreAll()
+			restoreWallpaper()
 			note = "waywallen not running"
 		end
 		publish()
@@ -156,10 +350,11 @@ local enabled = type(noctalia.setWallpaperEnabled) == "function"
 
 if enabled then
 	noctalia.setUpdateInterval(pollMilliseconds())
+	captureSavedWallpaper()
 end
 
--- Service tick: re-check and re-assert (the flag is runtime-only, so this also
--- recovers it after a Noctalia restart).
+-- Service tick: re-check and re-assert (the yield flag is runtime-only, so this
+-- also recovers it after a Noctalia restart).
 function update()
 	if not enabled then
 		return
@@ -168,19 +363,23 @@ function update()
 	reconcile()
 end
 
--- Hotplug: yield brand-new outputs immediately.
+-- Hotplug: yield brand-new outputs and capture their wallpaper immediately.
 function onOutputsChanged()
-	if enabled then
-		reconcile()
+	if not enabled then
+		return
 	end
+	captureDone = false
+	captureSavedWallpaper()
+	reconcile()
 end
 
 -- Settings changed (poll interval, unit, ...): pick them up without a restart.
 function onConfigChanged()
-	if enabled then
-		noctalia.setUpdateInterval(pollMilliseconds())
-		reconcile()
+	if not enabled then
+		return
 	end
+	noctalia.setUpdateInterval(pollMilliseconds())
+	reconcile()
 end
 
 -- Explicit enable via the plugin manager: optionally bring the daemon up too.
@@ -198,6 +397,8 @@ end
 function onIpc(event, _payload)
 	if event == "refresh" then
 		reconcile()
+	elseif event == "sync" then
+		syncColors()
 	elseif event == "suspend" then
 		noctalia.state.set(SUSPEND_KEY, true)
 		reconcile()
@@ -212,14 +413,15 @@ function onIpc(event, _payload)
 	end
 end
 
--- Restore Noctalia's wallpaper when the entry goes away. A plain reload is
--- skipped: the reloaded service re-yields a moment later, and restoring first
--- would only flash Noctalia's wallpaper.
+-- Restore Noctalia's surface and wallpaper when the entry goes away. A plain
+-- reload is skipped: the reloaded service re-asserts a moment later, and
+-- restoring first would only flash.
 function onExit(_signal, reason)
 	if not enabled or reason == "reload" then
 		return
 	end
 	restoreAll()
+	restoreWallpaper()
 	if manageDaemon() and (reason == "disable" or reason == "uninstall") then
 		noctalia.runAsync("systemctl --user stop " .. shellQuote(unitName()) .. " >/dev/null 2>&1")
 	end
