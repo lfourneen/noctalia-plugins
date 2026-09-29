@@ -115,7 +115,7 @@ noctalia msg plugin lfourneen/waywallen-bridge:service all status
 | Only while waywallen is running | on | Probe for a waywallen process; restore Noctalia's wallpaper otherwise. |
 | Manage the waywallen service | off | Start/stop the systemd user unit with the plugin. Leave off when your init system starts it. |
 | Service unit | `waywallen.service` | Unit used only by the option above. |
-| Poll interval (seconds) | `3` | How often to re-check and re-assert. |
+| Poll interval (seconds) | `5` | How often to re-check and re-assert. |
 | Sync Noctalia's colors from the wallpaper | on | Feed Noctalia a still of waywallen's wallpaper (`sync_colors`). |
 | Video frame at (seconds) | `1` | Timestamp of the frame captured from a video wallpaper. |
 

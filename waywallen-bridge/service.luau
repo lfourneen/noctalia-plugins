@@ -98,7 +98,7 @@ local function pollMilliseconds()
 	if type(value) == "number" and value >= 1 then
 		return math.floor(value) * 1000
 	end
-	return 3000
+	return 5000
 end
 
 local function yieldEnabled()
