@@ -156,14 +156,31 @@ local function hashString(value)
 	return string.format("%08x", hash)
 end
 
+local lastSignature = nil
+
 local function publish()
+	local yieldedCount = count(yielded)
 	local outputs = {}
 	for _, output in ipairs(noctalia.outputs()) do
 		outputs[output.name] = yielded[output.name] == true
 	end
+	local signature = table.concat({
+		tostring(yieldedCount),
+		tostring(running),
+		tostring(suspended()),
+		tostring(yieldEnabled()),
+		tostring(syncEnabled()),
+		tostring(requireRunning()),
+		tostring(lastStill),
+		note,
+	}, "|")
+	if signature == lastSignature then
+		return
+	end
+	lastSignature = signature
 	noctalia.state.set(STATUS_KEY, {
 		outputs = outputs,
-		yielded = count(yielded),
+		yielded = yieldedCount,
 		running = running,
 		suspended = suspended(),
 		yield_enabled = yieldEnabled(),
@@ -335,6 +352,40 @@ local function syncColors(paths)
 	end)
 end
 
+local WAYWALLEN_CONFIG = "~/.config/waywallen/config.toml"
+local lastStamp = nil
+local lastPaths = {}
+
+-- waywallen rewrites its config when the wallpaper changes, so a cheap stat
+-- gates the process scan: while it is unchanged no process is spawned at all.
+local function configStamp()
+	local info = noctalia.fileInfo(noctalia.expandPath(WAYWALLEN_CONFIG))
+	if type(info) == "table" then
+		return tostring(info.mtime or 0) .. ":" .. tostring(info.size or 0)
+	end
+	return "none"
+end
+
+local function resolvePaths(callback)
+	local stamp = configStamp()
+	if lastStamp ~= nil and stamp == lastStamp and #lastPaths > 0 then
+		callback(lastPaths)
+		return
+	end
+	lastStamp = stamp
+	scanWaywallen(function(_, paths)
+		lastPaths = paths
+		callback(paths)
+	end)
+end
+
+-- Liveness: a waywallen renderer exists, i.e. it is actually drawing. This uses
+-- Noctalia's process matcher (a cached /proc read on a worker thread), not a
+-- spawned `ps`, so the steady-state poll costs no subprocess.
+local function rendererRunning(callback)
+	noctalia.processMatches(callback, "waywallen-", "renderer")
+end
+
 -- Probe for waywallen and reconcile Noctalia's surfaces and colors.
 local function reconcile()
 	if suspended() then
@@ -359,9 +410,26 @@ local function reconcile()
 		return
 	end
 
-	scanWaywallen(function(found, paths)
+	if not requireRunning() then
+		running = true
+		if yieldEnabled() then
+			yieldAll()
+			note = "yielded"
+		else
+			restoreAll()
+			note = "yield disabled"
+		end
+		if syncEnabled() then
+			resolvePaths(syncColors)
+		else
+			publish()
+		end
+		return
+	end
+
+	rendererRunning(function(found)
 		running = found
-		if requireRunning() and not found then
+		if not found then
 			restoreAll()
 			restoreWallpaper()
 			note = "waywallen not running"
@@ -376,9 +444,10 @@ local function reconcile()
 			note = "yield disabled"
 		end
 		if syncEnabled() then
-			syncColors(paths)
+			resolvePaths(syncColors)
+		else
+			publish()
 		end
-		publish()
 	end)
 end
 
