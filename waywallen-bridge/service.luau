@@ -232,27 +232,24 @@ local function restoreWallpaper()
 	end
 end
 
--- One process scan per poll: reports whether waywallen is running and the
--- wallpaper file(s) its renderers are using. `ps -eo args` joins argv with
--- spaces, so paths containing spaces are a known limitation.
+-- One process scan per poll. The shell filters to waywallen renderer lines
+-- first, so the Luau side parses a handful of lines instead of the whole
+-- process list (parsing every line blows the 25 ms script budget). The `[w]`
+-- bracket keeps grep from matching its own command line.
 local function scanWaywallen(callback)
-	noctalia.runAsync("ps -eo args 2>/dev/null || true", function(result)
-		local found = false
+	noctalia.runAsync("ps -eo args 2>/dev/null | grep -E '[w]aywallen.*--path' || true", function(result)
 		local paths = {}
 		local seen = {}
 		if result and result.stdout then
 			for line in result.stdout:gmatch("[^\n]+") do
-				if line:find("waywallen", 1, true) and not line:find("waywallen-bridge", 1, true) then
-					found = true
-					local path = line:match("%-%-path[= ]([^%s]+)")
-					if path and path ~= "" and not seen[path] then
-						seen[path] = true
-						table.insert(paths, path)
-					end
+				local path = line:match("%-%-path[= ]([^%s]+)")
+				if path and path ~= "" and not seen[path] then
+					seen[path] = true
+					table.insert(paths, path)
 				end
 			end
 		end
-		callback(found, paths)
+		callback(#paths > 0, paths)
 	end, 5000)
 end
 
