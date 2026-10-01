@@ -43,6 +43,24 @@ control-center **Home tab preview** is drawn from its live wallpaper
 *instance*: hiding the surface (yield on) removes that instance, so the preview
 only appears with yield off.
 
+### Keeping both (niri)
+
+Noctalia's wallpaper and waywallen's are both on the `background` layer, and
+niri decides which is on top - so with yield off, Noctalia's static wallpaper
+can end up covering the video. On niri, keep the instance but make its layer
+invisible with an `opacity` rule, and leave `yield_wallpaper = false`:
+
+```kdl
+layer-rule {
+  match namespace="^noctalia-wallpaper*"
+  opacity 0.0
+}
+```
+
+The instance (and its Home-tab thumbnail and palette) stays alive, while the
+transparent layer lets waywallen's live wallpaper show through regardless of
+stacking order.
+
 Set `[theme] source = "wallpaper"` in Noctalia for the palette to follow it.
 
 ## Requirements
