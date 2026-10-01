@@ -1,6 +1,6 @@
 id = "lfourneen/waywallen-bridge"
 name = "Waywallen Bridge"
-version = "1.2.1"
+version = "1.2.2"
 plugin_api = 17
 author = "lfourneen"
 license = "MIT"
@@ -60,6 +60,13 @@ key = "sync_colors"
 type = "bool"
 label_key = "settings.sync_colors.label"
 description_key = "settings.sync_colors.description"
+default = true
+
+[[setting]]
+key = "raise_on_start"
+type = "bool"
+label_key = "settings.raise_on_start.label"
+description_key = "settings.raise_on_start.description"
 default = true
 
 [[setting]]

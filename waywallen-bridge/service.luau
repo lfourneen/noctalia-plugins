@@ -113,6 +113,10 @@ local function syncEnabled()
 	return cfgBool("sync_colors", true)
 end
 
+local function raiseEnabled()
+	return cfgBool("raise_on_start", true)
+end
+
 local function manageDaemon()
 	return cfgBool("manage_daemon", false)
 end
@@ -157,6 +161,7 @@ local function hashString(value)
 end
 
 local lastSignature = nil
+local raised = false
 
 local function publish()
 	local yieldedCount = count(yielded)
@@ -209,6 +214,25 @@ local function restoreAll()
 		noctalia.setWallpaperEnabled(name, true)
 		yielded[name] = nil
 	end
+end
+
+-- niri stacks newer surfaces of the background layer below older ones, so
+-- Noctalia's wallpaper can end up on top of waywallen's live wallpaper after a
+-- login. Recreating Noctalia's surface once, after waywallen is up, drops it
+-- below waywallen - keeping both the Home preview and the video visible.
+local function maybeRaiseNoctalia()
+	if raised or yieldEnabled() or not raiseEnabled() then
+		return
+	end
+	raised = true
+	for _, output in ipairs(noctalia.outputs()) do
+		noctalia.setWallpaperEnabled(output.name, false)
+	end
+	noctalia.runAsync("sleep 2", function()
+		for _, output in ipairs(noctalia.outputs()) do
+			noctalia.setWallpaperEnabled(output.name, true)
+		end
+	end)
 end
 
 -- Remember the wallpaper Noctalia had before we started overriding it, per
@@ -424,6 +448,7 @@ local function reconcile()
 		else
 			publish()
 		end
+		maybeRaiseNoctalia()
 		return
 	end
 
@@ -448,6 +473,7 @@ local function reconcile()
 		else
 			publish()
 		end
+		maybeRaiseNoctalia()
 	end)
 end
 
