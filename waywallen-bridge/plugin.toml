@@ -1,6 +1,6 @@
 id = "lfourneen/waywallen-bridge"
 name = "Waywallen Bridge"
-version = "1.2.2"
+version = "1.2.3"
 plugin_api = 17
 author = "lfourneen"
 license = "MIT"
@@ -67,7 +67,7 @@ key = "raise_on_start"
 type = "bool"
 label_key = "settings.raise_on_start.label"
 description_key = "settings.raise_on_start.description"
-default = true
+default = false
 
 [[setting]]
 key = "video_seek_seconds"
