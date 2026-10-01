@@ -11,8 +11,6 @@
   "settings.poll_seconds.description": "How often to re-check whether waywallen is running and re-assert the yield.",
   "settings.sync_colors.label": "Sync Noctalia's colors from the wallpaper",
   "settings.sync_colors.description": "Hand Noctalia a still of waywallen's current wallpaper so its palette generator, templates and lock screen follow the live wallpaper. Videos are decoded to a frame with ffmpeg.",
-  "settings.raise_on_start.label": "Re-map at login so the video stays visible",
-  "settings.raise_on_start.description": "niri can stack Noctalia's static wallpaper above waywallen after a login. This recreates Noctalia's wallpaper surface once at startup so it drops below waywallen, keeping both the Home preview and the live wallpaper. Only used when the yield above is off.",
   "settings.video_seek_seconds.label": "Video frame at (seconds)",
   "settings.video_seek_seconds.description": "Timestamp of the frame captured from a video wallpaper for color sync.",
   "settings.glyph.label": "Icon"

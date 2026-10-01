@@ -11,8 +11,6 @@
   "settings.poll_seconds.description": "多久重新检测一次 waywallen 是否在运行并重新断言让位。",
   "settings.sync_colors.label": "根据壁纸同步 Noctalia 配色",
   "settings.sync_colors.description": "把 waywallen 当前壁纸的静帧交给 Noctalia，让调色板、模板和锁屏跟随动态壁纸。视频会用 ffmpeg 抽取一帧。",
-  "settings.raise_on_start.label": "登录时重排，保证动态壁纸可见",
-  "settings.raise_on_start.description": "niri 可能把 Noctalia 的静态壁纸叠在 waywallen 之上。此项会在启动时把 Noctalia 的壁纸层重建一次，使其落到 waywallen 下方，从而同时保留 Home 预览和动态壁纸。仅在“让位”关闭时生效。",
   "settings.video_seek_seconds.label": "视频取帧时间点（秒）",
   "settings.video_seek_seconds.description": "视频壁纸用于配色同步时截取画面的时间点。",
   "settings.glyph.label": "图标"
