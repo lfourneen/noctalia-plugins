@@ -3,7 +3,7 @@
 # One [[plugin]] row per plugin, mirroring that plugin's own plugin.toml.
 # Noctalia reads this file from the git source without a full checkout, then
 # exports the matching subdirectory - the part of the id after "/" - when the
-# plugin is enabled. Keep it in sync with `waywallen-bridge/plugin.toml`.
+# plugin is enabled. Keep it in sync with each plugin's plugin.toml.
 #
 # Add this repo to Noctalia with:
 #   noctalia msg plugins source add lfourneen git https://github.com/lfourneen/noctalia-plugins
@@ -19,4 +19,17 @@ description  = "Keeps Noctalia's own wallpaper surface out of the way while wayw
 plugin_api   = 17
 tags         = ["wallpaper", "desktop", "theming"]
 dependencies = ["waywallen", "ffmpeg"]
+deprecated   = false
+
+[[plugin]]
+id           = "lfourneen/netcenter"
+name         = "Network Center"
+version      = "0.1.0"
+author       = "lfourneen"
+license      = "MIT"
+icon         = "network"
+description  = "IP address, upload/download speed and listening ports in one bar tile, with a single panel for Wi-Fi, addresses, traffic and ports."
+plugin_api   = 43
+tags         = ["bar", "panel", "service", "network", "system", "utility", "development"]
+dependencies = ["nmcli", "ip", "install", "chmod", "ss", "kill", "fuser", "pkexec", "xdg-open"]
 deprecated   = false

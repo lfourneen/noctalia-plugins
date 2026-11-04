@@ -1,0 +1,165 @@
+# Network Center - one Noctalia plugin for the network: the default route's
+# address, live traffic and listening ports in the bar, and a single panel that
+# combines the NetworkManager addressing editor with the traffic graph and port
+# list.
+#
+# This is a merged derivative of two community plugins:
+#   - muhammadessam/network-control
+#   - mahmoudomiesh/network-monitor
+# See README.md for the exact provenance and the local changes carried over.
+#
+# The network service owns every nmcli call and every profile write (with the
+# confirm/rollback window); the scanner service owns traffic sampling and the
+# `ss` port scan. The widget and panel are thin clients on their state channels.
+
+id = "lfourneen/netcenter"
+name = "Network Center"
+version = "0.1.0"
+plugin_api = 43
+author = "lfourneen"
+license = "MIT"
+icon = "network"
+description = "IP address, upload/download speed and listening ports in one bar tile, with a single panel for Wi-Fi, addresses, traffic and ports."
+tags = ["bar", "panel", "service", "network", "system", "utility", "development"]
+dependencies = ["nmcli", "ip", "install", "chmod", "ss", "kill", "fuser", "pkexec", "xdg-open"]
+
+# ── settings ─────────────────────────────────────────────────────────────────
+
+[[setting]]
+key = "confirm_seconds"
+type = "int"
+label_key = "settings.confirm_seconds.label"
+description_key = "settings.confirm_seconds.description"
+default = 45
+
+[[setting]]
+key = "refresh_seconds"
+type = "int"
+label_key = "settings.refresh_seconds.label"
+description_key = "settings.refresh_seconds.description"
+default = 15
+
+[[setting]]
+key = "show_speed"
+type = "bool"
+label_key = "settings.show_speed.label"
+description_key = "settings.show_speed.description"
+default = true
+
+[[setting]]
+key = "show_ports"
+type = "bool"
+label_key = "settings.show_ports.label"
+description_key = "settings.show_ports.description"
+default = true
+
+[[setting]]
+key = "speed_activity_mbps"
+type = "double"
+label_key = "settings.speed_activity_mbps.label"
+description_key = "settings.speed_activity_mbps.description"
+default = 1.0
+min = 0.0
+max = 1000.0
+
+[[setting]]
+key = "speed_critical_mbps"
+type = "double"
+label_key = "settings.speed_critical_mbps.label"
+description_key = "settings.speed_critical_mbps.description"
+default = 10.0
+min = 0.0
+max = 1000.0
+
+[[setting]]
+key = "speed_normal_color"
+type = "color"
+label_key = "settings.speed_normal_color.label"
+description_key = "settings.speed_normal_color.description"
+default = "on_surface"
+
+[[setting]]
+key = "speed_activity_color"
+type = "color"
+label_key = "settings.speed_activity_color.label"
+description_key = "settings.speed_activity_color.description"
+default = "primary"
+
+[[setting]]
+key = "speed_critical_color"
+type = "color"
+label_key = "settings.speed_critical_color.label"
+description_key = "settings.speed_critical_color.description"
+default = "error"
+
+[[setting]]
+key = "refresh_interval"
+type = "int"
+label_key = "settings.refresh_interval.label"
+description_key = "settings.refresh_interval.description"
+default = 5
+min = 1
+max = 30
+
+[[setting]]
+key = "hide_system_ports"
+type = "bool"
+label_key = "settings.hide_system_ports.label"
+description_key = "settings.hide_system_ports.description"
+default = true
+
+[[setting]]
+key = "only_own_processes"
+type = "bool"
+label_key = "settings.only_own_processes.label"
+description_key = "settings.only_own_processes.description"
+default = false
+
+[[setting]]
+key = "include_udp"
+type = "bool"
+label_key = "settings.include_udp.label"
+description_key = "settings.include_udp.description"
+default = false
+
+# ── entries ──────────────────────────────────────────────────────────────────
+
+# NetworkManager state, profile writes and the confirm/rollback window.
+[[service]]
+id = "network"
+entry = "service.luau"
+
+# Traffic sampling and the listening-port scan.
+[[service]]
+id = "scanner"
+entry = "scanner.luau"
+
+# Address + two-line upload/download + port count in one tile.
+[[widget]]
+id = "widget"
+entry = "widget.luau"
+
+  [[widget.setting]]
+  key = "show_text"
+  type = "bool"
+  label_key = "settings.show_text.label"
+  description_key = "settings.show_text.description"
+  default = true
+
+  [[widget.setting]]
+  key = "glyph"
+  type = "glyph"
+  label_key = "settings.glyph.label"
+  description_key = "settings.glyph.description"
+  default = "network"
+
+# One panel: primary connection, traffic graph, ports, Wi-Fi, connections and
+# the addressing editor.
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 520
+height = 800
+placement = "attached"
+position = "auto"
+open_near_click = true
