@@ -72,6 +72,20 @@ min = 0.0
 max = 1000.0
 
 [[setting]]
+key = "traffic_download_color"
+type = "color"
+label_key = "settings.traffic_download_color.label"
+description_key = "settings.traffic_download_color.description"
+default = "primary"
+
+[[setting]]
+key = "traffic_upload_color"
+type = "color"
+label_key = "settings.traffic_upload_color.label"
+description_key = "settings.traffic_upload_color.description"
+default = "secondary"
+
+[[setting]]
 key = "speed_normal_color"
 type = "color"
 label_key = "settings.speed_normal_color.label"

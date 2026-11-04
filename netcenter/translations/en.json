@@ -93,6 +93,7 @@
     "connect": "Connect",
     "connections": "Connections",
     "disconnect": "Disconnect",
+    "download": "Download",
     "edit": "Addressing",
     "empty": "—",
     "exposed": "exposed",
@@ -128,6 +129,7 @@
     "traffic": "Traffic",
     "unavailable": "nmcli is not on PATH — NetworkManager is required.",
     "unknown_process": "Unknown process",
+    "upload": "Upload",
     "wifi_radio": "Wi-Fi radio"
   },
   "settings": {
@@ -190,6 +192,14 @@
     "speed_normal_color": {
       "description": "Color used below the activity threshold.",
       "label": "Normal color"
+    },
+    "traffic_download_color": {
+      "description": "Color of the download waveform and its legend entry.",
+      "label": "Download color"
+    },
+    "traffic_upload_color": {
+      "description": "Color of the upload waveform and its legend entry.",
+      "label": "Upload color"
     }
   },
   "tab": {

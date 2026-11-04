@@ -52,8 +52,9 @@ One panel with two tabs, opened on the **Connection** tab:
   (scan, join, hidden network), connection profiles and the addressing editor
   (DHCP/static, IPv4/IPv6, gateway, DNS, search domains) with the
   apply/keep/revert flow.
-- **Traffic & Ports** — the original Network Monitor view: live RX/TX graph and
-  the `ss` listening-port table with open-in-browser and stop actions.
+- **Traffic & Ports** — the original Network Monitor view: live RX/TX graph
+  (separately colored, with a Download/Upload legend below it) and the `ss`
+  listening-port table with open-in-browser and stop actions.
 
 The tab bar stays fixed at the top; each tab scrolls on its own, so the two
 views do not turn into one long page.
@@ -75,6 +76,8 @@ panel opens.
 | `speed_normal_color` | `on_surface` | Color below the activity threshold. |
 | `speed_activity_color` | `primary` | Color between activity and critical. |
 | `speed_critical_color` | `error` | Color at or above critical. |
+| `traffic_download_color` | `primary` | Download waveform and legend color. |
+| `traffic_upload_color` | `secondary` | Upload waveform and legend color. |
 | `refresh_interval` | `5` | Port scan interval in seconds. |
 | `hide_system_ports` | `true` | Skip well-known ports below 1024. |
 | `only_own_processes` | `false` | Only list listeners with a visible process ID. |

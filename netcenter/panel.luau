@@ -771,6 +771,11 @@ local function num(value)
   return tonumber(value) or 0
 end
 
+local function trafficColors()
+  return noctalia.getConfig("traffic_download_color") or "primary",
+      noctalia.getConfig("traffic_upload_color") or "secondary"
+end
+
 local function trafficGraph()
   local rxHistory = (type(traffic) == "table" and traffic.rxHistory) or {}
   local txHistory = (type(traffic) == "table" and traffic.txHistory) or {}
@@ -785,25 +790,40 @@ local function trafficGraph()
   for i = 1, #txHistory do
     tx[i] = num(txHistory[i]) / peak
   end
-  return ui.graph({ values = rx, values2 = tx, color = "primary", color2 = "secondary", fillOpacity = 0.15, height = 56 })
+  local downloadColor, uploadColor = trafficColors()
+  return ui.graph({
+    values = rx,
+    values2 = tx,
+    color = downloadColor,
+    color2 = uploadColor,
+    fillOpacity = 0.15,
+    height = 56,
+  })
 end
 
-local function legend(glyph: string, bytesPerSecond, color: string)
+local function legend(glyph: string, label: string, bytesPerSecond, color: string)
   return ui.row({ gap = 4, align = "center" }, {
-    ui.glyph({ name = glyph, size = 13, color = color }),
-    ui.label({ text = rates.full(num(bytesPerSecond)), fontSize = 13, fontFamily = "monospace", color = color }),
+    ui.glyph({ name = glyph, size = 12, color = color }),
+    ui.label({
+      text = label .. "  " .. rates.full(num(bytesPerSecond)),
+      fontSize = 11,
+      fontFamily = "monospace",
+      color = color,
+    }),
   })
 end
 
 local function trafficCard()
+  local downloadColor, uploadColor = trafficColors()
   return ui.column({ fill = "surface_container", radius = 12, padding = 14, gap = 8 }, {
-    ui.row({ gap = 12, align = "center" }, {
-      legend("download-speed", traffic.rx, "primary"),
-      legend("upload-speed", traffic.tx, "secondary"),
-      ui.spacer({ flexGrow = 1 }),
-      ui.label({ text = tr("panel.traffic"), fontSize = 13, color = "on_surface_variant" }),
+    ui.row({ gap = 8, align = "center" }, {
+      ui.label({ text = tr("panel.traffic"), fontSize = 13, color = "on_surface_variant", flexGrow = 1 }),
     }),
     trafficGraph(),
+    ui.row({ gap = 16, align = "center" }, {
+      legend("download-speed", tr("panel.download"), traffic.rx, downloadColor),
+      legend("upload-speed", tr("panel.upload"), traffic.tx, uploadColor),
+    }),
   })
 end
 
