@@ -1091,7 +1091,7 @@ function onOpen(_context)
 end
 
 function onClose()
-  -- Nothing runs in the background here: the service owns every call.
+  -- The services own background work.
 end
 
 noctalia.state.watch("network.state", function(value)
@@ -1112,24 +1112,31 @@ noctalia.state.watch("network.state", function(value)
     reseedWhenProfileChanges = nil
   end
   syncDraft()
-  render()
+  if activeTab == "control" then render() end
 end)
 
 noctalia.state.watch("traffic", function(value)
   traffic = value
-  render()
+  if activeTab == "monitor" then render() end
 end)
 
 noctalia.state.watch("listeners", function(value)
   listeners = value or {}
-  render()
+  if activeTab == "monitor" then render() end
 end)
 
 noctalia.state.watch("scan_error", function(value)
   scanError = value == true
-  render()
+  if activeTab == "monitor" then render() end
 end)
 
+-- Hot reload can replace an already open panel without another onOpen call.
+-- Seed its connection state before the first paint as well as onOpen.
+local initialState = noctalia.state.get("network.state")
+if type(initialState) == "table" then
+  snapshot = initialState
+  syncDraft()
+end
 traffic = noctalia.state.get("traffic")
 listeners = noctalia.state.get("listeners") or {}
 scanError = noctalia.state.get("scan_error") == true

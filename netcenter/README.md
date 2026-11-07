@@ -88,7 +88,7 @@ panel opens.
 ## Dependencies
 
 `nmcli`, `ip`, `install`, `chmod` (NetworkManager addressing), `ss`, `kill`,
-`fuser`, `pkexec` (port scan and stop actions), `xdg-open` (open a TCP port in
+`fuser`, `pkexec`, `python3` (port scan and stop actions), `xdg-open` (open a TCP port in
 the browser).
 
 ## Changes carried over from the local versions
@@ -103,3 +103,33 @@ the browser).
   is opened; it stays an inline hint.
 - The panel's settings button opens the single plugin settings page, which now
   contains both the addressing and the traffic/port options.
+
+## Installation and verification
+
+Install and update from the Git source:
+
+```sh
+noctalia msg plugins source add lfourneen git https://github.com/lfourneen/noctalia-plugins
+noctalia msg plugins update lfourneen
+noctalia msg plugins enable lfourneen/netcenter
+```
+
+From a source checkout, run:
+
+```sh
+noctalia plugins lint netcenter
+python3 netcenter/tests/run_tests.py
+noctalia msg plugin lfourneen/netcenter:scanner all status
+```
+
+The test runner needs the Luau CLI (`--luau /path/to/luau` is supported).
+The status event logs sample/scan counts, current speeds, port count and scan
+error state to Noctalia's log without exposing connection credentials.
+
+Version 0.1.1 bounds port scans to 10 seconds, retries missing callbacks, ignores
+late results from superseded scans, collects/parses sockets in a separate Python
+process to stay outside the shell callback budget, and
+applies network polling changes while
+running. Traffic sampling reads `/proc/net/dev` directly without enabling CPU/GPU probes.
+Panel changes render immediately, background updates repaint only the relevant
+tab, and bar renders remain pending if a callback exhausts its execution budget.

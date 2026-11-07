@@ -14,14 +14,14 @@
 
 id = "lfourneen/netcenter"
 name = "Network Center"
-version = "0.1.0"
+version = "0.1.1"
 plugin_api = 43
 author = "lfourneen"
 license = "MIT"
 icon = "network"
 description = "IP address, upload/download speed and listening ports in one bar tile, with a single panel for Wi-Fi, addresses, traffic and ports."
 tags = ["bar", "panel", "service", "network", "system", "utility", "development"]
-dependencies = ["nmcli", "ip", "install", "chmod", "ss", "kill", "fuser", "pkexec", "xdg-open"]
+dependencies = ["nmcli", "ip", "install", "chmod", "python3", "ss", "kill", "fuser", "pkexec", "xdg-open"]
 
 # ── settings ─────────────────────────────────────────────────────────────────
 

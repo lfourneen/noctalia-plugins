@@ -219,8 +219,8 @@ function update()
   -- Coalesce the three state channels into one paint per bar tick, and keep
   -- repainting while the confirm countdown is live.
   if dirty or snapshot.pending ~= nil then
-    dirty = false
     render()
+    dirty = false
   end
 end
 
